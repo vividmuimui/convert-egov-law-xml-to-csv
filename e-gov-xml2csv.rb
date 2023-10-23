@@ -28,9 +28,9 @@ end
 
 def write_csv(out_file, result)
   CSV.open(out_file, "w", force_quotes: true) do |csv|
-    csv << ["編", "編タイトル", "章", "章タイトル", "条", "条タイトル", "項", "本文"]
+    csv << ["編", "編タイトル", "章", "章タイトル", "節", "節タイトル", "条", "条タイトル", "項", "本文"]
     result.each do |hash|
-      csv << [hash[:part_num], hash[:part_title], hash[:chapter_num], hash[:chapter_title], hash[:article_num], hash[:article_title], hash[:paragraph_num], hash[:text]]
+      csv << [hash[:part_num], hash[:part_title], hash[:chapter_num], hash[:chapter_title], hash[:section_num], hash[:section_title], hash[:article_num], hash[:article_title], hash[:paragraph_num], hash[:text]]
     end
   end
   puts "#{result.size}データを出力しました: #{out_file}"
@@ -96,7 +96,22 @@ def parse_chapter(element)
     chapter_num = chapter.attributes['Num']
     chapter_title = chapter.elements['ChapterTitle'].text
 
-    result << parse_article(chapter).map { |hash| hash.merge(chapter_num: chapter_num, chapter_title: chapter_title) }
+    if chapter.elements['Section']
+      result << parse_section(chapter).map { |hash| hash.merge(chapter_num: chapter_num, chapter_title: chapter_title) }
+    else
+      result << parse_article(chapter).map { |hash| hash.merge(chapter_num: chapter_num, chapter_title: chapter_title) }
+    end
+  end
+  result.flatten
+end
+
+def parse_section(element)
+  result = []
+  element.elements.each('Section') do |section|
+    section_num = section.attributes['Num']
+    section_title = section.elements['SectionTitle'].text
+
+    result << parse_article(section).map { |hash| hash.merge(section_num: section_num, section_title: section_title) }
   end
   result.flatten
 end
