@@ -112,6 +112,7 @@ def parse_article(element)
       paragraph_num = paragraph.attributes['Num']
       # paragraph_num = paragraph.elements['ParagraphNum'].text || '' # 1項目は番号が振られてないことがある
       paragraph_texts = extract_texts_without_ruby(paragraph, 'ParagraphSentence/Sentence')
+      has_table = paragraph.elements['TableStruct']
 
       item_texts = paragraph.elements.collect('Item') do |item|
         item_title = item.elements['ItemTitle'].text
@@ -124,7 +125,8 @@ def parse_article(element)
 
       paragraph_text = paragraph_texts.join
       item_text = item_texts.join("\n")
-      text = [paragraph_text, item_text].reject(&:empty?).join("\n")
+      table_text = has_table ? '(本来はここに表が入るがCSV化のときに未対応)' : ''
+      text = [paragraph_text, item_text, table_text].reject(&:empty?).join("\n")
 
       result << {
         article_num: article_num,
