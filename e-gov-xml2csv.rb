@@ -26,11 +26,29 @@ def parse_args
   [in_file, out_file]
 end
 
+
 def write_csv(out_file, result)
+  header_hash = {
+    part_num: "編",
+    part_title: "編タイトル",
+    chapter_num: "章",
+    chapter_title: "章タイトル",
+    section_num: "節",
+    section_title: "節タイトル",
+    subsection_num: "款",
+    subsection_title: "款タイトル",
+    division_num: "目",
+    division_title: "目タイトル",
+    article_num: "条",
+    article_title: "条タイトル",
+    paragraph_num: "項",
+    text: "本文"
+  }
+
   CSV.open(out_file, "w", force_quotes: true) do |csv|
-    csv << ["編", "編タイトル", "章", "章タイトル", "節", "節タイトル", "款", "款タイトル", "条", "条タイトル", "項", "本文"]
+    csv << header_hash.values
     result.each do |hash|
-      csv << [hash[:part_num], hash[:part_title], hash[:chapter_num], hash[:chapter_title], hash[:section_num], hash[:section_title], hash[:subsection_num], hash[:subsection_title], hash[:article_num], hash[:article_title], hash[:paragraph_num], hash[:text]]
+      csv << header_hash.keys.map { |key| hash[key] }
     end
   end
   puts "#{result.size}データを出力しました: #{out_file}"
@@ -126,7 +144,22 @@ def parse_subsection(element)
     subsection_num = subsection.attributes['Num']
     subsection_title = subsection.elements['SubsectionTitle'].text
 
-    result << parse_article(subsection).map { |hash| hash.merge(subsection_num: subsection_num, subsection_title: subsection_title) }
+    if subsection.elements['Division']
+      result << parse_division(subsection).map { |hash| hash.merge(subsection_num: subsection_num, subsection_title: subsection_title) }
+    else
+      result << parse_article(subsection).map { |hash| hash.merge(subsection_num: subsection_num, subsection_title: subsection_title) }
+    end
+  end
+  result.flatten
+end
+
+def parse_division(element)
+  result = []
+  element.elements.each('Division') do |division|
+    division_num = division.attributes['Num']
+    division_title = division.elements['DivisionTitle'].text
+
+    result << parse_article(division).map { |hash| hash.merge(division_num: division_num, division_title: division_title) }
   end
   result.flatten
 end
