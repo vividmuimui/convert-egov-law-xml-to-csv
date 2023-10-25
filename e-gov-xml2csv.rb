@@ -164,20 +164,22 @@ def parse_article(element)
       paragraph_num = paragraph.attributes['Num']
       # paragraph_num = paragraph.elements['ParagraphNum'].text || '' # 1項目は番号が振られてないことがある
       paragraph_texts = extract_texts_without_ruby(paragraph, 'ParagraphSentence/Sentence')
-      has_table = paragraph.elements['TableStruct']
 
       item_texts = paragraph.elements.collect('Item') do |item|
         item_title = item.elements['ItemTitle'].text
         item_sentence_texts = [
           extract_texts_without_ruby(item, 'ItemSentence/Sentence'),
-          extract_texts_without_ruby(item, 'ItemSentence/Column/Sentence')
-        ].flatten
-        "#{item_title} #{item_sentence_texts.join(' ')}"
+          extract_texts_without_ruby(item, 'ItemSentence/Column/Sentence'),
+        ].flatten.join(' ')
+        item_text = "#{item_title} #{item_sentence_texts}"
+
+        [item_text, parse_table_text(item), parse_subitem(item)].reject(&:empty?)
       end
+
 
       paragraph_text = paragraph_texts.join
       item_text = item_texts.join("\n")
-      table_text = has_table ? '(本来はここに表が入るがCSV化のときに未対応)' : ''
+      table_text = parse_table_text(paragraph)
       text = [paragraph_text, item_text, table_text].reject(&:empty?).join("\n")
 
       result << {
@@ -189,6 +191,39 @@ def parse_article(element)
     end
   end
   result
+end
+
+def parse_subitem(element, num = 1)
+  result = []
+  key = "Subitem#{num}"
+  element.elements.each(key) do |subitem|
+    subitem_title = subitem.elements["#{key}Title"].text
+    subitem_texts = [
+      extract_texts_without_ruby(subitem, "#{key}Sentence/Sentence"),
+      extract_texts_without_ruby(subitem, "#{key}Sentence/Column/Sentence"),
+    ].flatten.join(' ')
+    subitem_text = "#{"\t" * num}#{subitem_title} #{subitem_texts}"
+
+    result << [subitem_text, parse_subitem(subitem, num + 1), parse_table_text(subitem)].reject(&:empty?)
+  end
+  result.flatten
+end
+
+def parse_table_text(element)
+  if element.elements['TableStruct']
+    '(※ 本来はここに表が入るがCSV化のときに未対応)'
+  else
+    ''
+  end
+  # element.elements.each('TableStruct') do |table|
+  #   table.elements.each('TableRow') do |row|
+  #     row.elements.each('TableColumn') do |column|
+  #       column.elements.each('Sentence') do |sentence|
+  #         puts sentence.text
+  #       end
+  #     end
+  #   end
+  # end
 end
 
 def sequential_article_num?(previous_nums, current_nums, previous, current)
