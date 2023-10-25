@@ -1,6 +1,27 @@
 require 'rexml/document'
 require 'csv'
 
+# 使い方
+# ruby e-gov-xml2csv.rb in.xml out.csv
+# 例: ruby e-gov-xml2csv.rb 347AC0000000057_20220617_504AC0000000068.xml 347AC0000000057_20220617_504AC0000000068_労働安全衛生法.csv
+# xmlはe-govからダウンロードしたものを使う。 https://elaws.e-gov.go.jp/
+#
+# 法令の文章の構造についてはこちらを参考: https://www.mirai-inc.jp/support/roppo/basic-knowledge.pdf
+def main
+  in_file, out_file = parse_args
+  doc = REXML::Document.new(File.open(in_file))
+  law = doc.elements['Law']
+  puts({
+    "LawType": law.attributes['LawType'],
+    "LawNum": law.elements['LawNum'].text,
+    "LawName": law.elements['LawBody/LawTitle'].text,
+  })
+  result = parse_main_provision(law.elements['LawBody/MainProvision'])
+  validate_artice_num(result)
+  write_csv(out_file, result)
+end
+
+
 def extract_text_without_ruby(element)
   element.delete_element('Ruby/Rt')
   return REXML::XPath.match(element, './/text()').map(&:value).join
@@ -25,7 +46,6 @@ def parse_args
 
   [in_file, out_file]
 end
-
 
 def write_csv(out_file, result)
   header_hash = {
@@ -270,22 +290,4 @@ def validate_artice_num(result)
   end
 end
 
-def main
-  in_file, out_file = parse_args
-  doc = REXML::Document.new(File.open(in_file))
-  law = doc.elements['Law']
-  puts({
-    "LawType": law.attributes['LawType'],
-    "LawNum": law.elements['LawNum'].text,
-    "LawName": law.elements['LawBody/LawTitle'].text,
-  })
-  result = parse_main_provision(law.elements['LawBody/MainProvision'])
-  validate_artice_num(result)
-  write_csv(out_file, result)
-end
-
-# 使い方
-# ruby e-gov-xml2csv.rb in.xml out.csv
-# 例: ruby e-gov-xml2csv.rb 347AC0000000057_20220617_504AC0000000068.xml 347AC0000000057_20220617_504AC0000000068_労働安全衛生法.csv
-# xmlはe-govからダウンロードしたものを使う。 https://elaws.e-gov.go.jp/
 main()
