@@ -74,37 +74,6 @@ def write_csv(out_file, result)
   puts "#{result.size}データを出力しました: #{out_file}"
 end
 
-def run_for_type_Act(doc)
-  appl_data = doc.elements['DataRoot/ApplData']
-  puts({
-    "LawType": appl_data.elements['LawFullText/Law'].attributes['LawType'],
-    "LawId": appl_data.elements['LawId'].text,
-    "LawName": appl_data.elements['LawFullText/Law/LawNum'].text,
-  })
-
-  parse_main_provision(appl_data.elements['LawFullText/Law/LawBody/MainProvision'])
-end
-
-def run_for_type_MinisterialOrdinance(doc)
-  law = doc.elements['Law']
-  puts({
-    "LawType": law.attributes['LawType'],
-    "LawNum": law.elements['LawNum'].text,
-    "LawName": law.elements['LawBody/LawTitle'].text,
-  })
-  parse_main_provision(law.elements['LawBody/MainProvision'])
-end
-
-def run_for_type_CabinetOrder(doc)
-  law = doc.elements['Law']
-  puts({
-    "LawType": law.attributes['LawType'],
-    "LawNum": law.elements['LawNum'].text,
-    "LawName": law.elements['LawBody/LawTitle'].text,
-  })
-  parse_main_provision(law.elements['LawBody/MainProvision'])
-end
-
 def parse_main_provision(element)
   case
   when element.elements['Part']
@@ -227,11 +196,9 @@ def sequential_article_num?(previous_nums, current_nums, previous, current)
     if previous_nums.last == current_nums.last
       # previous: 2章1項, current: 2章2項 のようなケース
       unless previous[:paragraph_num].to_i + 1 == current[:paragraph_num].to_i
-        # raise "項番号が連続していません: previous: #{previous}, current: #{current}, previous: #{previous}, current: #{current}"
         return false
       end
     elsif previous_nums.last + 1 != current_nums.last
-      # raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
       return false
     end
   end
@@ -239,7 +206,6 @@ def sequential_article_num?(previous_nums, current_nums, previous, current)
   # previous: [66, 8], current: [66, 8, 2] のようなケース
   if previous_nums.size + 1 == current_nums.size
     unless current_nums.last == 2
-      # raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
       return false
     end
   end
@@ -247,7 +213,6 @@ def sequential_article_num?(previous_nums, current_nums, previous, current)
   # previous: [66, 8, 4], current: [66, 9] のようなケース
   if previous_nums.size == current_nums.size + 1
     unless previous_nums[-2] + 1 == current_nums.last
-      # raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
       return false
     end
   end
