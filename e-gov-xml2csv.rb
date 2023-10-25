@@ -202,6 +202,74 @@ def parse_article(element)
   result
 end
 
+def sequential_article_num?(previous_nums, current_nums, previous, current)
+  if previous_nums.size == current_nums.size
+    if previous_nums.last == current_nums.last
+      # previous: 2章1項, current: 2章2項 のようなケース
+      unless previous[:paragraph_num].to_i + 1 == current[:paragraph_num].to_i
+        # raise "項番号が連続していません: previous: #{previous}, current: #{current}, previous: #{previous}, current: #{current}"
+        return false
+      end
+    elsif previous_nums.last + 1 != current_nums.last
+      # raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
+      return false
+    end
+  end
+
+  # previous: [66, 8], current: [66, 8, 2] のようなケース
+  if previous_nums.size + 1 == current_nums.size
+    unless current_nums.last == 2
+      # raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
+      return false
+    end
+  end
+
+  # previous: [66, 8, 4], current: [66, 9] のようなケース
+  if previous_nums.size == current_nums.size + 1
+    unless previous_nums[-2] + 1 == current_nums.last
+      # raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
+      return false
+    end
+  end
+  return true
+end
+
+def validate_artice_num(result)
+  previous = nil
+  previous_nums = nil
+
+  result.each do |current|
+    current_num_text = current[:article_num]
+    current_nums = current_num_text.split('_').map(&:to_i)
+
+    unless previous_nums
+      previous_nums = current_nums
+      previous = current
+      next
+    end
+
+    # previous: 95_3_2, current: 95_4:95_5 のようなケース。複数条文が削除されているときこの表記になる
+    if current_num_text.include?(':')
+      current_first_nums = current_num_text.split(':').first.split('_').map(&:to_i)
+      current_last_nums = current_num_text.split(':').last.split('_').map(&:to_i)
+
+      unless sequential_article_num?(previous_nums, current_first_nums, previous, current)
+        raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
+      end
+      previous_nums = current_last_nums
+      previous = current
+      next
+    else
+      unless sequential_article_num?(previous_nums, current_nums, previous, current)
+        raise "条番号が連続していません: previous: #{previous_nums}, current: #{current_nums}, previous: #{previous}, current: #{current}"
+      end
+    end
+
+    previous_nums = current_nums
+    previous = current
+  end
+end
+
 def main
   in_file, out_file = parse_args
   doc = REXML::Document.new(File.open(in_file))
@@ -212,6 +280,7 @@ def main
     "LawName": law.elements['LawBody/LawTitle'].text,
   })
   result = parse_main_provision(law.elements['LawBody/MainProvision'])
+  validate_artice_num(result)
   write_csv(out_file, result)
 end
 
